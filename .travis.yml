@@ -63,3 +63,24 @@
 #
 # script:
 #     - platformio ci --lib="." --board=ID_1 --board=ID_2 --board=ID_N
+
+language: c
+before_install:
+  - "/sbin/start-stop-daemon --start --quiet --pidfile /tmp/custom_xvfb_1.pid --make-pidfile --background --exec /usr/bin/Xvfb -- :1 -ac -screen 0 1280x1024x16"
+  - sleep 3
+  - export DISPLAY=:1.0
+  - wget http://downloads.arduino.cc/arduino-1.8.1-linux64.tar.xz
+  - tar xf arduino-1.8.1-linux64.tar.xz
+  - sudo mv arduino-1.8.1 /usr/local/share/arduino
+  - sudo ln -s /usr/local/share/arduino/arduino /usr/local/bin/arduino
+  - git clone https://github.com/andrewrapp/xbee-arduino.git
+  - sudo mv xbee-arduino /usr/local/share/arduino/libraries/
+  - git clone https://github.com/openenergymonitor/EmonLib.git
+  - sudo mv EmonLib /usr/local/share/arduino/libraries/
+install:
+script:
+  - arduino --verify --board arduino:avr:uno $PWD/src/arduino-energy-coordinator-wifi.ino
+notifications:
+  email:
+    on_success: change
+    on_failure: change
