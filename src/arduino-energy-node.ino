@@ -41,17 +41,27 @@ const int sensors = 1;
 
 // change voltage calibration number:
 // 91.66 for 120VAC-12VAC, 183.33 for 240VAC-12VAC
-const float calib8 = 183.33;     // A8
-const float calib9 = 91.66;      // A9
+const float calib120 = 91.66;
+const float calib240 = 183.33;
 
 // change it to specify voltage sensor pin
 //                    S0  S1  S2  S3  S4  S5
 int voltSensor[6] = { 2 , 8 , 8 , 8 , 8 , 8 };
+float calib[6] = { calib240, calib240, calib240, calib240, calib240, calib240 };
+const float phaseShift = 1.7;
 
-long interval = 60000; // interval at which to do something (milliseconds)
+const float currentCalib = 16.66;
+
+const float wavelengths = 20;
+const float timeout = 2000;
+
+long interval = 6000; // interval at which to do something (milliseconds)
 
 float lastPower = 0;
 float presentPower = 0;
+
+const int dataLength = 8; // length of data
+const int dataNum = 5; // number of data inputs
 
 void setup() {
   Serial.begin(115200); // start serial port
@@ -59,20 +69,16 @@ void setup() {
 }
 
 void loop() {
-  char data[8] = { 0 };
-  float dataArray[5] = { 0 };
+  char data[dataLength] = { 0 };
+  float dataArray[dataNum] = { 0 };
 
   for (int i = 0; i < sensors; i++) {
     // configure sensors according to setup (above), don't change here
-    if (voltSensor[i] < 9)
-      emon.voltage(voltSensor[i], calib8, 1.7); // voltage: input pin, calibration, phase shift
-    else
-      emon.voltage(voltSensor[i], calib9, 1.7);
-
-    emon.current(i, 16.66); // current: input pin, calibration
+    emon.voltage(voltSensor[i], calib[i], phaseShift); // voltage: input pin, calibration, phase shift
+    emon.current(i, currentCalib); // current: input pin, calibration
 
     // calculate values
-    emon.calcVI(20, 2000); // no. of wavelengths, time-out
+    emon.calcVI(wavelengths, timeout); // no. of wavelengths, time-out
 
     // get values from sensors
     dataArray[0] = emon.realPower;
@@ -99,10 +105,6 @@ void loop() {
     Serial.print("E: ");
     Serial.println(dataArray[4]);
 
-    // set node id and sensor number (don't change here)
-    payload[41] = node;
-    payload[40] = uint8_t(i);
-
     // convert floats to strings and add them to the payload
     for (int i = 0; i < 5; i++) {
       // dtostrf(floatVar, minStringWidthIncDecimalPoint, numVarsAfterDecimal, charBuf)
@@ -126,6 +128,10 @@ void loop() {
           break;
       }
     }
+
+    // set node id and sensor number (don't change here)
+    payload[40] = uint8_t(i);
+    payload[41] = node;
     /*
     for (int x = 0; x < sizeof(payload); x++) {
       Serial.print(char(payload[x]));
@@ -133,7 +139,7 @@ void loop() {
     Serial.println();
     */
     // send to datalogger
-    sendData(loggerZbTx, loggerTxStatus);
+    //sendData(loggerZbTx, loggerTxStatus);
     // wait 5 secs before sending next sensor
     delay(interval);
   }
